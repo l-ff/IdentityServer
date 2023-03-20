@@ -23,6 +23,7 @@ using Duende.IdentityServer.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using static Duende.IdentityServer.Constants;
+using static Duende.IdentityServer.IdentityServerConstants;
 using Duende.IdentityServer.Extensions;
 using Duende.IdentityServer.Hosting.FederatedSignOut;
 using Duende.IdentityServer.Services.Default;
@@ -30,6 +31,7 @@ using Duende.IdentityServer.Services.KeyManagement;
 using Microsoft.Extensions.Logging;
 using Duende.IdentityServer.Hosting.DynamicProviders;
 using Duende.IdentityServer.Internal;
+using Duende.IdentityServer.Stores.Empty;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -111,7 +113,7 @@ public static class IdentityServerBuilderExtensionsCore
         builder.AddEndpoint<BackchannelAuthenticationEndpoint>(EndpointNames.BackchannelAuthentication, ProtocolRoutePaths.BackchannelAuthentication.EnsureLeadingSlash());
         builder.AddEndpoint<CheckSessionEndpoint>(EndpointNames.CheckSession, ProtocolRoutePaths.CheckSession.EnsureLeadingSlash());
         builder.AddEndpoint<DeviceAuthorizationEndpoint>(EndpointNames.DeviceAuthorization, ProtocolRoutePaths.DeviceAuthorization.EnsureLeadingSlash());
-        builder.AddEndpoint<DiscoveryKeyEndpoint>(EndpointNames.Discovery, ProtocolRoutePaths.DiscoveryWebKeys.EnsureLeadingSlash());
+        builder.AddEndpoint<DiscoveryKeyEndpoint>(EndpointNames.Jwks, ProtocolRoutePaths.DiscoveryWebKeys.EnsureLeadingSlash());
         builder.AddEndpoint<DiscoveryEndpoint>(EndpointNames.Discovery, ProtocolRoutePaths.DiscoveryConfiguration.EnsureLeadingSlash());
         builder.AddEndpoint<EndSessionCallbackEndpoint>(EndpointNames.EndSession, ProtocolRoutePaths.EndSessionCallback.EnsureLeadingSlash());
         builder.AddEndpoint<EndSessionEndpoint>(EndpointNames.EndSession, ProtocolRoutePaths.EndSession.EnsureLeadingSlash());
@@ -169,6 +171,9 @@ public static class IdentityServerBuilderExtensionsCore
 
         builder.Services.TryAddTransient(typeof(IConcurrencyLock<>), typeof(DefaultConcurrencyLock<>));
 
+        builder.Services.TryAddTransient<IClientStore, EmptyClientStore>();
+        builder.Services.TryAddTransient<IResourceStore, EmptyResourceStore>();
+
         return builder;
     }
 
@@ -210,9 +215,9 @@ public static class IdentityServerBuilderExtensionsCore
         builder.Services.TryAddTransient<IUserCodeGenerator, NumericUserCodeGenerator>();
         builder.Services.TryAddTransient<ILogoutNotificationService, LogoutNotificationService>();
         builder.Services.TryAddTransient<IBackChannelLogoutService, DefaultBackChannelLogoutService>();
-        builder.Services.TryAddTransient<IResourceValidator, DefaultResourceValidator>();
         builder.Services.TryAddTransient<IScopeParser, DefaultScopeParser>();
         builder.Services.TryAddTransient<ISessionCoordinationService, DefaultSessionCoordinationService>();
+        builder.Services.TryAddTransient<IReplayCache, DefaultReplayCache>();
 
         builder.Services.TryAddTransient<IBackchannelAuthenticationThrottlingService, DistributedBackchannelAuthenticationThrottlingService>();
         builder.Services.TryAddTransient<IBackchannelAuthenticationUserNotificationService, NopBackchannelAuthenticationUserNotificationService>();
@@ -292,7 +297,9 @@ public static class IdentityServerBuilderExtensionsCore
         builder.Services.TryAddTransient<IDeviceAuthorizationRequestValidator, DeviceAuthorizationRequestValidator>();
         builder.Services.TryAddTransient<IDeviceCodeValidator, DeviceCodeValidator>();
         builder.Services.TryAddTransient<IBackchannelAuthenticationRequestIdValidator, BackchannelAuthenticationRequestIdValidator>();
-            
+        builder.Services.TryAddTransient<IResourceValidator, DefaultResourceValidator>();
+        builder.Services.TryAddTransient<IDPoPProofValidator, DefaultDPoPProofValidator>();
+
         builder.Services.TryAddTransient<IBackchannelAuthenticationRequestValidator, BackchannelAuthenticationRequestValidator>();
 
         // optional

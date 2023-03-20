@@ -158,7 +158,6 @@ internal class BackchannelAuthenticationRequestValidator : IBackchannelAuthentic
             Client = _validatedRequest.Client,
             Scopes = _validatedRequest.RequestedScopes,
             ResourceIndicators = resourceIndicators,
-            IncludeNonIsolatedApiResources = _validatedRequest.RequestedScopes.Contains(OidcConstants.StandardScopes.OfflineAccess),
         });
 
         if (!validatedResources.Succeeded)
@@ -498,7 +497,7 @@ internal class BackchannelAuthenticationRequestValidator : IBackchannelAuthentic
 
     private void LogWithRequestDetails(LogLevel logLevel, string message = null, object values = null)
     {
-        var details = new BackchannelAuthenticationRequestValidationLog(_validatedRequest, _options.Logging.TokenRequestSensitiveValuesFilter);
+        var details = new BackchannelAuthenticationRequestValidationLog(_validatedRequest, _options.Logging.BackchannelAuthenticationRequestSensitiveValuesFilter);
 
         if (message.IsPresent())
         {

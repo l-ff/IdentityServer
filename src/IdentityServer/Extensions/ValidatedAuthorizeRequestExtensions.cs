@@ -32,9 +32,21 @@ public static class ValidatedAuthorizeRequestExtensions
             }
             suppress.Append(OidcConstants.PromptModes.SelectAccount);
         }
+        if (request.PromptModes.Contains(OidcConstants.PromptModes.Create))
+        {
+            if (suppress.Length > 0)
+            {
+                suppress.Append(" ");
+            }
+            suppress.Append(OidcConstants.PromptModes.Create);
+        }
 
         request.Raw.Add(Constants.SuppressedPrompt, suppress.ToString());
-        request.PromptModes = request.PromptModes.Except(new[] { OidcConstants.PromptModes.Login, OidcConstants.PromptModes.SelectAccount }).ToArray();
+        request.PromptModes = request.PromptModes.Except(new[] { 
+            OidcConstants.PromptModes.Login, 
+            OidcConstants.PromptModes.SelectAccount,
+            OidcConstants.PromptModes.Create
+        }).ToArray();
     }
 
     public static string GetPrefixedAcrValue(this ValidatedAuthorizeRequest request, string prefix)
@@ -157,7 +169,10 @@ public static class ValidatedAuthorizeRequestExtensions
                     key == OidcConstants.AuthorizeRequest.ResponseType || 
                     request.RequestObjectValues.All(x => x.Type != key))
                 {
-                    collection.Add(key, request.Raw[key]);
+                    foreach(var value in request.Raw.GetValues(key))
+                    {
+                        collection.Add(key, value);
+                    }
                 }
             }
 

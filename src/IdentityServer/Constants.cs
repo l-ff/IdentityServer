@@ -110,7 +110,9 @@ internal static class Constants
         OidcConstants.PromptModes.None,
         OidcConstants.PromptModes.Login,
         OidcConstants.PromptModes.Consent,
-        OidcConstants.PromptModes.SelectAccount
+        OidcConstants.PromptModes.SelectAccount,
+        // Create not in here by default -- it's added if customer sets the CreateAccountUrl user interaction option
+        //OidcConstants.PromptModes.Create, 
     };
 
     public const string SuppressedPrompt = "suppressed_" + OidcConstants.AuthorizeRequest.Prompt;
@@ -180,6 +182,7 @@ internal static class Constants
             public const string Error = "errorId";
             public const string Login = "returnUrl";
             public const string Consent = "returnUrl";
+            public const string CreateAccount = "returnUrl";
             public const string Logout = "logoutId";
             public const string EndSessionCallback = "endSessionId";
             public const string Custom = "returnUrl";
@@ -194,54 +197,6 @@ internal static class Constants
             public const string Error = "/home/error";
             public const string DeviceVerification = "/device";
         }
-    }
-
-    public static class EndpointNames
-    {
-        public const string Authorize = "Authorize";
-        public const string BackchannelAuthentication = "BackchannelAuthentication";
-        public const string Token = "Token";
-        public const string DeviceAuthorization = "DeviceAuthorization";
-        public const string Discovery = "Discovery";
-        public const string Introspection = "Introspection";
-        public const string Revocation = "Revocation";
-        public const string EndSession = "Endsession";
-        public const string CheckSession = "Checksession";
-        public const string UserInfo = "Userinfo";
-    }
-
-    public static class ProtocolRoutePaths
-    {
-        public const string ConnectPathPrefix       = "connect";
-
-        public const string Authorize                   = ConnectPathPrefix + "/authorize";
-        public const string AuthorizeCallback           = Authorize + "/callback";
-        public const string DiscoveryConfiguration      = ".well-known/openid-configuration";
-        public const string DiscoveryWebKeys            = DiscoveryConfiguration + "/jwks";
-        public const string BackchannelAuthentication   = ConnectPathPrefix + "/ciba";
-        public const string Token                       = ConnectPathPrefix + "/token";
-        public const string Revocation                  = ConnectPathPrefix + "/revocation";
-        public const string UserInfo                    = ConnectPathPrefix + "/userinfo";
-        public const string Introspection               = ConnectPathPrefix + "/introspect";
-        public const string EndSession                  = ConnectPathPrefix + "/endsession";
-        public const string EndSessionCallback          = EndSession + "/callback";
-        public const string CheckSession                = ConnectPathPrefix + "/checksession";
-        public const string DeviceAuthorization         = ConnectPathPrefix + "/deviceauthorization";
-
-        public const string MtlsPathPrefix              = ConnectPathPrefix + "/mtls";
-        public const string MtlsToken                   = MtlsPathPrefix + "/token";
-        public const string MtlsRevocation              = MtlsPathPrefix + "/revocation";
-        public const string MtlsIntrospection           = MtlsPathPrefix + "/introspect";
-        public const string MtlsDeviceAuthorization     = MtlsPathPrefix + "/deviceauthorization";
-
-        public static readonly string[] CorsPaths =
-        {
-            DiscoveryConfiguration,
-            DiscoveryWebKeys,
-            Token,
-            UserInfo,
-            Revocation
-        };
     }
 
     public static class EnvironmentKeys
