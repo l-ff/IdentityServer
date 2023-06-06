@@ -1,6 +1,7 @@
 // Copyright (c) Duende Software. All rights reserved.
 // See LICENSE in the project root for license information.
 
+#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -38,7 +39,8 @@ public class LoggingOptions
             OidcConstants.TokenRequest.Password,
             OidcConstants.TokenRequest.ClientAssertion,
             OidcConstants.TokenRequest.RefreshToken,
-            OidcConstants.TokenRequest.DeviceCode
+            OidcConstants.TokenRequest.DeviceCode,
+            OidcConstants.TokenRequest.Code
         };
 
     /// <summary>

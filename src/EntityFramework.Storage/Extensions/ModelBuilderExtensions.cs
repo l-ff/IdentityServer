@@ -1,6 +1,7 @@
 // Copyright (c) Duende Software. All rights reserved.
 // See LICENSE in the project root for license information.
 
+#nullable enable
 
 using Duende.IdentityServer.EntityFramework.Entities;
 using Duende.IdentityServer.EntityFramework.Options;
@@ -46,6 +47,7 @@ public static class ModelBuilderExtensions
             client.Property(x => x.PairWiseSubjectSalt).HasMaxLength(200);
             client.Property(x => x.UserCodeType).HasMaxLength(100);
             client.Property(x => x.AllowedIdentityTokenSigningAlgorithms).HasMaxLength(100);
+            client.Property(x => x.InitiateLoginUri).HasMaxLength(2000);
 
             client.HasIndex(x => x.ClientId).IsUnique();
 

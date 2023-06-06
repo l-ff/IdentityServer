@@ -1,3 +1,6 @@
+// Copyright (c) Duende Software. All rights reserved.
+// See LICENSE in the project root for license information.
+
 using Duende.IdentityServer.EntityFramework.DbContexts;
 using Duende.IdentityServer.EntityFramework.Entities;
 using Duende.IdentityServer.EntityFramework.Mappers;
@@ -10,26 +13,27 @@ namespace IdentityServerHost.Pages.Admin.Clients;
 public class ClientSummaryModel
 {
     [Required]
-    public string ClientId { get; set; }
-    public string Name { get; set; }
+    public string ClientId { get; set; } = default!;
+    public string? Name { get; set; }
     [Required]
     public Flow Flow { get; set; }
 }
 
 public class CreateClientModel : ClientSummaryModel
 {
-    public string Secret { get; set; }
+    public string Secret { get; set; } = default!;
 }
 
 public class ClientModel : CreateClientModel, IValidatableObject
 {
     [Required]
-    public string AllowedScopes { get; set; }
+    public string AllowedScopes { get; set; } = default!;
 
-    public string RedirectUri { get; set; }
-    public string PostLogoutRedirectUri { get; set; }
-    public string FrontChannelLogoutUri { get; set; }
-    public string BackChannelLogoutUri { get; set; }
+    public string? RedirectUri { get; set; }
+    public string? InitiateLoginUri { get; set; }
+    public string? PostLogoutRedirectUri { get; set; }
+    public string? FrontChannelLogoutUri { get; set; }
+    public string? BackChannelLogoutUri { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -62,7 +66,7 @@ public class ClientRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<ClientSummaryModel>> GetAllAsync(string filter = null)
+    public async Task<IEnumerable<ClientSummaryModel>> GetAllAsync(string? filter = null)
     {
         var grants = new[] { GrantType.AuthorizationCode, GrantType.ClientCredentials };
 
@@ -85,7 +89,7 @@ public class ClientRepository
         return await result.ToArrayAsync();
     }
 
-    public async Task<ClientModel> GetByIdAsync(string id)
+    public async Task<ClientModel?> GetByIdAsync(string id)
     {
         var client = await _context.Clients
             .Include(x => x.AllowedGrantTypes)
@@ -103,8 +107,9 @@ public class ClientRepository
             Name = client.ClientName,
             Flow = client.AllowedGrantTypes.Select(x => x.GrantType)
                 .Single() == GrantType.ClientCredentials ? Flow.ClientCredentials : Flow.CodeFlowWithPkce,
-            AllowedScopes = client.AllowedScopes.Any() ? client.AllowedScopes.Select(x => x.Scope).Aggregate((a, b) => $"{a} {b}") : null,
+            AllowedScopes = client.AllowedScopes.Any() ? client.AllowedScopes.Select(x => x.Scope).Aggregate((a, b) => $"{a} {b}") : string.Empty,
             RedirectUri = client.RedirectUris.Select(x => x.RedirectUri).SingleOrDefault(),
+            InitiateLoginUri = client.InitiateLoginUri,
             PostLogoutRedirectUri = client.PostLogoutRedirectUris.Select(x => x.PostLogoutRedirectUri).SingleOrDefault(),
             FrontChannelLogoutUri = client.FrontChannelLogoutUri,
             BackChannelLogoutUri = client.BackChannelLogoutUri,
@@ -113,6 +118,7 @@ public class ClientRepository
 
     public async Task CreateAsync(CreateClientModel model)
     {
+        ArgumentNullException.ThrowIfNull(model);   
         var client = new Duende.IdentityServer.Models.Client();
         client.ClientId = model.ClientId.Trim();
         client.ClientName = model.Name?.Trim();
@@ -135,6 +141,7 @@ public class ClientRepository
 
     public async Task UpdateAsync(ClientModel model)
     {
+        ArgumentNullException.ThrowIfNull(model);
         var client = await _context.Clients
             .Include(x => x.AllowedGrantTypes)
             .Include(x => x.AllowedScopes)
@@ -142,7 +149,7 @@ public class ClientRepository
             .Include(x => x.PostLogoutRedirectUris)
             .SingleOrDefaultAsync(x => x.ClientId == model.ClientId);
 
-        if (client == null) throw new Exception("Invalid Client Id");
+        if (client == null) throw new ArgumentException("Invalid Client Id");
 
         if (client.ClientName != model.Name)
         {
@@ -180,6 +187,10 @@ public class ClientRepository
                     client.RedirectUris.Add(new ClientRedirectUri { RedirectUri = model.RedirectUri.Trim() });
                 }
             }
+            if (client.InitiateLoginUri != model.InitiateLoginUri)
+            {
+                client.InitiateLoginUri = model.InitiateLoginUri;
+            }
             if (client.PostLogoutRedirectUris.SingleOrDefault()?.PostLogoutRedirectUri != model.PostLogoutRedirectUri)
             {
                 client.PostLogoutRedirectUris.Clear();
@@ -205,7 +216,7 @@ public class ClientRepository
     {
         var client = await _context.Clients.SingleOrDefaultAsync(x => x.ClientId == clientId);
 
-        if (client == null) throw new Exception("Invalid Client Id");
+        if (client == null) throw new ArgumentException("Invalid Client Id");
 
         _context.Clients.Remove(client);
         await _context.SaveChangesAsync();

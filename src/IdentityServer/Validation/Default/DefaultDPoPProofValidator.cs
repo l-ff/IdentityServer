@@ -146,21 +146,21 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
             return Task.CompletedTask;
         }
 
-        if (!token.TryGetHeaderValue<string>("typ", out var typ) || typ != "dpop+jwk")
+        if (!token.TryGetHeaderValue<string>(JwtClaimTypes.TokenType, out var typ) || typ != JwtClaimTypes.JwtTypes.DPoPProofToken)
         {
             result.IsError = true;
             result.ErrorDescription = "Invalid 'typ' value.";
             return Task.CompletedTask;
         }
 
-        if (!token.TryGetHeaderValue<string>("alg", out var alg) || !IdentityServerConstants.SupportedDPoPSigningAlgorithms.Contains(alg))
+        if (!token.TryGetHeaderValue<string>(JwtClaimTypes.Algorithm, out var alg) || !IdentityServerConstants.SupportedDPoPSigningAlgorithms.Contains(alg))
         {
             result.IsError = true;
             result.ErrorDescription = "Invalid 'alg' value.";
             return Task.CompletedTask;
         }
 
-        if (!token.TryGetHeaderValue<IDictionary<string, object>>("jwk", out var jwkValues))
+        if (!token.TryGetHeaderValue<IDictionary<string, object>>(JwtClaimTypes.JsonWebKey, out var jwkValues))
         {
             result.IsError = true;
             result.ErrorDescription = "Invalid 'jwk' value.";
@@ -255,7 +255,7 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
             return;
         }
 
-        if (!result.Payload.TryGetValue("htm", out var htm) || !"POST".Equals(htm))
+        if (!result.Payload.TryGetValue(JwtClaimTypes.DPoPHttpMethod, out var htm) || !"POST".Equals(htm))
         {
             result.IsError = true;
             result.ErrorDescription = "Invalid 'htm' value.";
@@ -263,14 +263,14 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
         }
 
         var tokenUrl = ServerUrls.BaseUrl.EnsureTrailingSlash() + ProtocolRoutePaths.Token;
-        if (!result.Payload.TryGetValue("htu", out var htu) || !tokenUrl.Equals(htu))
+        if (!result.Payload.TryGetValue(JwtClaimTypes.DPoPHttpUrl, out var htu) || !tokenUrl.Equals(htu))
         {
             result.IsError = true;
             result.ErrorDescription = "Invalid 'htu' value.";
             return;
         }
 
-        if (result.Payload.TryGetValue("iat", out var iat))
+        if (result.Payload.TryGetValue(JwtClaimTypes.IssuedAt, out var iat))
         {
             if (iat is int)
             {
@@ -289,7 +289,7 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
             return;
         }
 
-        if (result.Payload.TryGetValue("nonce", out var nonce))
+        if (result.Payload.TryGetValue(JwtClaimTypes.Nonce, out var nonce))
         {
             result.Nonce = nonce as string;
         }
@@ -305,7 +305,7 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
         await ValidateReplayAsync(context, result);
         if (result.IsError)
         {
-            Logger.LogDebug("Detected replay of DPoP token");
+            result.ErrorDescription = "Detected replay of DPoP proof token.";
             return;
         }
     }
@@ -317,8 +317,8 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
     {
         if (await ReplayCache.ExistsAsync(ReplayCachePurpose, result.TokenId))
         {
+            Logger.LogDebug("Detected DPoP proof token replay for jti {jti}", result.TokenId);
             result.IsError = true;
-            result.ErrorDescription = "Detected DPoP proof token replay.";
             return;
         }
 
@@ -339,6 +339,9 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
         // longer than the likelyhood of proof token expiration, which is done before replay
         skew *= 2;
         var cacheDuration = Options.DPoP.ProofTokenValidityDuration + skew;
+        
+        Logger.LogDebug("Adding proof token with jti {jti} to replay cache for duration {cacheDuration}", result.TokenId, cacheDuration);
+
         await ReplayCache.AddAsync(ReplayCachePurpose, result.TokenId, Clock.UtcNow.Add(cacheDuration));
     }
 
@@ -391,6 +394,7 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
         if (result.Nonce.IsMissing())
         {
             result.IsError = true;
+            result.Error = OidcConstants.TokenErrors.UseDPoPNonce;
             result.ErrorDescription = "Missing 'nonce' value.";
             result.ServerIssuedNonce = CreateNonce(context, result);
             return;
@@ -454,16 +458,23 @@ public class DefaultDPoPProofValidator : IDPoPProofValidator
     /// Validates the expiration of the DPoP proof.
     /// Returns true if the time is beyond the allowed limits, false otherwise.
     /// </summary>
-    protected virtual bool IsExpired(DPoPProofValidatonContext context, DPoPProofValidatonResult result, TimeSpan clockSkew, long unixTime)
+    protected virtual bool IsExpired(DPoPProofValidatonContext context, DPoPProofValidatonResult result, TimeSpan clockSkew, long issuedAtTime)
     {
-        var now = Clock.UtcNow;
-        var start = now.Subtract(clockSkew).ToUnixTimeSeconds();
-        
-        var validityWindow = Options.DPoP.ProofTokenValidityDuration;
-        var end = now.Add(validityWindow + clockSkew).ToUnixTimeSeconds();
-        
-        if (unixTime < start || unixTime > end)
+        var now = Clock.UtcNow.ToUnixTimeSeconds();
+        var start = now + (int) clockSkew.TotalSeconds;
+        if (start < issuedAtTime)
         {
+            var diff = issuedAtTime - now;
+            Logger.LogDebug("Expiration check failed. Creation time was too far in the future. The time being checked was {iat}, and clock is now {now}. The time difference is {diff}", issuedAtTime, now, diff);
+            return true;
+        }
+
+        var expiration = issuedAtTime + (int) Options.DPoP.ProofTokenValidityDuration.TotalSeconds;
+        var end = now - (int) clockSkew.TotalSeconds;
+        if (expiration < end)
+        {
+            var diff = now - expiration;
+            Logger.LogDebug("Expiration check failed. Expiration has already happened. The expiration was at {exp}, and clock is now {now}. The time difference is {diff}", expiration, now, diff);
             return true;
         }
 

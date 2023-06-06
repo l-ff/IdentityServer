@@ -1,7 +1,9 @@
-using System.IdentityModel.Tokens.Jwt;
 using Clients;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 
 namespace DPoPApi
 {
@@ -10,9 +12,7 @@ namespace DPoPApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-
             services.AddCors();
-            services.AddDistributedMemoryCache();
 
             // this API will accept any access token from the authority
             services.AddAuthentication("token")
@@ -21,9 +21,14 @@ namespace DPoPApi
                     options.Authority = Constants.Authority;
                     options.TokenValidationParameters.ValidateAudience = false;
                     options.MapInboundClaims = false;
-                    
+
                     options.TokenValidationParameters.ValidTypes = new[] { "at+jwt" };
                 });
+
+            services.ConfigureDPoPTokensForScheme("token", options =>
+            {
+                options.Mode = DPoPMode.DPoPAndBearer;
+            });
         }
 
         public void Configure(IApplicationBuilder app)
